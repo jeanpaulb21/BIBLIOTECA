@@ -3,6 +3,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from app.models import db, Usuario, Libro
 from app.forms import RegistroForm, LibroForm
 from functools import wraps
+import random
 
 main = Blueprint('main', __name__)
 
@@ -223,6 +224,7 @@ def mostrar_usuarios():
     return render_template('usuarios_mostrar.html', usuarios=usuarios)
 
 
+
 @main.route("/admin/usuarios/editar", methods=["POST"])
 @login_required
 @roles_requeridos('administrador')
@@ -244,4 +246,33 @@ def eliminar_usuario(id):
     db.session.commit()
     return jsonify({"mensaje": "Usuario eliminado"})
 
+@main.route('/admin/libros/nuevo', methods=['GET', 'POST'])
+@login_required
+@roles_requeridos('administrador', 'bibliotecario')
+def nuevo_libro():
+    form = LibroForm()
+
+    if form.validate_on_submit():
+        nuevo_libro = Libro(
+            titulo=form.titulo.data,
+            autor=form.autor.data,
+            descripcion=form.descripcion.data,
+            isbn_base=form.isbn_base.data if form.isbn_base.data else f"987{random.randint(1000000, 9999999)}"
+        )
+
+        # Validar ISBN duplicado
+        if Libro.query.filter_by(isbn_base=nuevo_libro.isbn_base).first():
+            flash("Ya existe un libro con este ISBN.", "danger")
+            return redirect(url_for('main.nuevo_libro'))
+
+        try:
+            db.session.add(nuevo_libro)
+            db.session.commit()
+            flash("Libro agregado exitosamente.", "success")
+            return redirect(url_for('main.admin_libros'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error al agregar libro: {e}", "danger")
+
+    return render_template('nuevo_libro.html', form=form)
 

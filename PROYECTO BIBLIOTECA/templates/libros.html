@@ -1,18 +1,48 @@
-<h2 class="ms-3 mt-3">Gestión de libros</h2>
+<h2 class="ms-3 mt-3">Gestión de Libros</h2>
 <p class="ms-3">Administra los libros del sistema aquí.</p>
 
-<!-- Contenedor donde se reemplazará el contenido -->
-<div id="panel-container" class="usuario-panel-container px-4">
-  <div class="usuario-panel">
+<div id="panel-container" class="libro-panel-container px-4">
+  <div class="libro-panel mb-4">
     <h4 class="text-white">Panel de opciones</h4>
-    <p class="text-secondary">Aquí puedes mostrar controles, tablas o estadísticas relacionadas con los libros.</p>
+    <p class="text-secondary">Aquí puedes mostrar controles, tablas o estadísticas relacionadas con libros.</p>
   </div>
 
-  <button type="button" class="btn btn-success">Mostrar libros</button>
-  <button type="button" class="btn btn-success">Editar libros</button>
-  <button type="button" class="btn btn-success">Eliminar libros</button>
-  <button id="btn-agregar-libros" type="button" class="btn btn-primary">Agregar libros</button>
+  <div class="mb-3">
+    <button id="btn-agregar" type="button" class="btn btn-primary me-2">Agregar libro</button>
+    <button id="btn-mostrar" type="button" class="btn btn-success me-2">Mostrar libros</button>
+    <button id="btn-editar" type="button" class="btn btn-success me-2">Editar libros</button>
+    <button id="btn-eliminar" type="button" class="btn btn-success">Eliminar libros</button>
+  </div>
+
+  <!-- Aquí se insertará el contenido dinámico -->
+  <div id="contenido-opcion" class="mt-4 bg-white p-3 rounded shadow-sm"></div>
 </div>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-<script src="{{ url_for('static', filename='configuracion.js') }}"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const cargarContenido = (url) => {
+      fetch(url)
+        .then(response => response.text())
+        .then(html => {
+          document.getElementById("contenido-opcion").innerHTML = html;
+        });
+    };
+
+    document.getElementById("btn-agregar").addEventListener("click", () => {
+      cargarContenido("/admin/libros/nuevo");
+    });
+
+    document.getElementById("btn-mostrar").addEventListener("click", () => {
+      cargarContenido("/admin/libros/mostrar");
+    });
+
+    document.getElementById("btn-editar").addEventListener("click", () => {
+      cargarContenido("/admin/libros/editar");
+    });
+
+    document.getElementById("btn-eliminar").addEventListener("click", () => {
+      cargarContenido("/admin/libros/eliminar");
+    });
+  });
+</script>
