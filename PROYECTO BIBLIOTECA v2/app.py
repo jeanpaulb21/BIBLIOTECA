@@ -15,7 +15,7 @@ def create_app():
     with app.app_context():
         db.create_all()
         if not Usuario.query.filter_by(rol='administrador').first():
-            admin = Usuario(username='admin', rol='administrador')
+            admin = Usuario(username='admin',correo='admin@biblioteca.com', rol='administrador')
             admin.set_password('admin123')
             db.session.add(admin)
             db.session.commit()

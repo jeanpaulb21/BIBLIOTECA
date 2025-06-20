@@ -4,8 +4,9 @@ Flask-SQLAlchemy
 PyMySQL
 Werkzeug
 flask_wtf
+WTForms
+email-validator
+requests
 sqlalchemy
 
-
-
-
+# pip install -r requirements.txt
