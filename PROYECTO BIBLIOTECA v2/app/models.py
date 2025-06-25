@@ -1,10 +1,10 @@
+# models.py
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from sqlalchemy import Enum
-
-db = SQLAlchemy()
+from app.extensions import db
 
 class Usuario(db.Model, UserMixin):
     __tablename__ = 'usuarios'
@@ -48,6 +48,8 @@ class Libro(db.Model):
     descripcion = db.Column(db.Text)
     fecha_creacion = db.Column(db.DateTime, default=db.func.current_timestamp())
     estado = db.Column(db.String(20), default="disponible")
+    # Nuevo campo para la URL de la portada
+    portada_url = db.Column(db.String(255), default='/static/imagenes/portada_default.png') # Puedes poner una imagen por defecto
 
     # Relaciones
     prestamos = db.relationship("Prestamo", back_populates="libro", cascade="all, delete-orphan")

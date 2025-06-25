@@ -71,3 +71,16 @@
         a:hover {
             color: #29b6f6;
         }
+
+        /* Elimina el ícono nativo de mostrar/ocultar contraseña */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}
+
+/* Elimina estilo por defecto de navegadores */
+input[type="password"] {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}

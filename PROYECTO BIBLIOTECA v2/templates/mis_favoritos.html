@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Favoritos - Mi Biblioteca{% endblock %}
+
+{% block content %}
+<h1>Mis Favoritos</h1>
+
+{% if favoritos %}
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for favorito in favoritos %}
+            <div class="col">
+                <div class="card bg-dark text-white h-100">
+                    {% if favorito.libro.imagen_url %}
+                        <img src="{{ favorito.libro.imagen_url }}" class="card-img-top" alt="{{ favorito.libro.titulo }}">
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ favorito.libro.titulo }}</h5>
+                        <p class="card-text"><strong>Autor:</strong> {{ favorito.libro.autor }}</p>
+                        <p class="card-text">{{ favorito.libro.descripcion[:150] }}{% if favorito.libro.descripcion|length > 150 %}...{% endif %}</p>
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('main.detalle_libro', libro_id=favorito.libro.id) }}" class="btn btn-primary btn-sm">Ver detalles</a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        No tienes libros favoritos aún.
+    </div>
+{% endif %}
+{% endblock %}

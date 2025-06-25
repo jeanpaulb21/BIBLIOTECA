@@ -8,5 +8,11 @@ WTForms
 email-validator
 requests
 sqlalchemy
+Flask-Mail
+
 
 # pip install -r requirements.txt
+
+# drop database biblioteca_db;
+
+# create database biblioteca_db;

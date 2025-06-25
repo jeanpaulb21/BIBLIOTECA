@@ -1,19 +1,22 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, jsonify, send_file, current_app
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from app.models import db, Usuario, Libro, Prestamo, Reserva
-from app.forms import RegistroForm, LibroForm, EditarLibroForm
+from flask_login import login_user, logout_user, login_required, current_user
+from flask_mail import Message
 from functools import wraps
-from app.libro import prestar_libro, devolver_libro  # solo las funciones que tienes
 from datetime import datetime
-import os
 from werkzeug.utils import secure_filename
 from time import time
-from io import BytesIO
+import os
+import requests
+# Importa las extensiones correctamente
+from app.extensions import db, login_manager, mail
+from app.models import Usuario, Libro, Prestamo, Reserva, Favorito
+from app.forms import RegistroForm, LibroForm, EditarLibroForm
+from app.utils import verificar_token, generar_token
+from app.libro import prestar_libro, devolver_libro
+
 
 
 main = Blueprint('main', __name__)
-
-login_manager = LoginManager()
 login_manager.login_view = 'main.login'
 
 @login_manager.user_loader
@@ -34,7 +37,7 @@ def roles_requeridos(*roles):
 
 @main.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('login.html')
 
 @main.route('/registro', methods=['GET', 'POST'])
 def registro():
@@ -85,7 +88,7 @@ def login():
             elif usuario.rol == 'bibliotecario':
                     return redirect(url_for('main.gestion'))
             elif usuario.rol == 'lector':
-                    return redirect(url_for('main.lectores'))
+                    return redirect(url_for('main.catalogo'))
             else:
                     return redirect(url_for('main.index'))
 
@@ -174,12 +177,15 @@ def inicio_contenido():
 
     )
 
+
 @main.route('/api/datos_libro/<isbn>')
 def api_datos_libro(isbn):
     # Busca en OpenLibrary
     ol_url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&format=json&jscmd=data"
     response = requests.get(ol_url)
     data = response.json()
+
+    portada_url = None # Inicializa la URL de la portada
 
     if f"ISBN:{isbn}" in data:
         libro = data[f"ISBN:{isbn}"]
@@ -188,16 +194,33 @@ def api_datos_libro(isbn):
         editorial = ', '.join(p['name'] for p in libro.get('publishers', [])) if 'publishers' in libro else ''
         fecha = libro.get('publish_date', None)
 
+        # 🖼️ Obtener la URL de la portada
+        if 'cover' in libro and 'large' in libro['cover']:
+            portada_url = libro['cover']['large']
+        elif 'cover' in libro and 'medium' in libro['cover']:
+            portada_url = libro['cover']['medium']
+        elif 'cover' in libro and 'small' in libro['cover']:
+            portada_url = libro['cover']['small']
+        # Si no hay cover en la data, se puede intentar con el API de Covers
+        elif isbn:
+            portada_url = f"https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg?default=false"
+            # Puedes incluso verificar si la imagen existe antes de enviarla
+            # response_cover = requests.head(portada_url)
+            # if not response_cover.ok:
+            #     portada_url = None # O una URL de imagen por defecto
+
         return jsonify({
             "success": True,
             "titulo": titulo,
             "autor": autores,
             "editorial": editorial,
             "fecha_publicacion": fecha,
-            "isbn": isbn
+            "isbn": isbn,
+            "portada_url": portada_url # Devolver la URL de la portada
         })
 
     return jsonify({"success": False})
+
 
 
 @main.route('/api/dashboard_data')
@@ -234,6 +257,23 @@ def admin_libros():
 @roles_requeridos('administrador')
 def admin_prestamos():
     return render_template('prestamos.html')
+
+@main.route('/admin/prestamos/mostrar')
+@login_required
+@roles_requeridos('administrador')
+def mostrar_prestamos():
+    prestamos = Prestamo.query.all()
+    return render_template('prestamos_tabla.html', prestamos=prestamos)
+
+
+@main.route('/admin/prestamos/nuevo')
+@login_required
+@roles_requeridos('administrador')
+def nuevo_prestamo():
+    usuarios = Usuario.query.all()
+    libros = Libro.query.filter(Libro.estado != 'eliminado', Libro.cantidad_disponible > 0).all()
+    return render_template('prestamos_agregar.html', usuarios=usuarios, libros=libros)
+
 
 @main.route('/admin/reservas')
 @login_required
@@ -280,38 +320,40 @@ def configuracion():
     return render_template('configuracion.html', usuario=usuario)
 
 
-@main.route('/lectores')
-@login_required
-@roles_requeridos('lector')
-def lectores():
-    return render_template('lectores.html')  
-
 @main.route('/catalogo')
 @login_required
 def catalogo():
-    libros = Libro.query.all()
-    return render_template('catalogo.html', libros=libros)
+    libros = Libro.query.filter(Libro.estado != 'eliminado').all()
+    # Para los lectores, podríamos querer información adicional como si el libro está en sus favoritos
+    favoritos_ids = []
+    if current_user.is_authenticated:
+        if current_user.rol == 'lector':
+            favoritos_ids = [f.libro_id for f in current_user.favoritos]
+
+    return render_template('catalogo.html', libros=libros, favoritos_ids=favoritos_ids)
 
 @main.route('/admin/usuarios/mostrar')
 @login_required
-@roles_requeridos('administrador')  # Si usas roles
+@roles_requeridos('administrador')
 def mostrar_usuarios():
     usuarios = Usuario.query.all()
     return render_template('usuarios_mostrar.html', usuarios=usuarios)
 
-
-
-@main.route("/admin/usuarios/editar", methods=["POST"])
+# En routes.py
+@main.route('/admin/usuarios/agregar')
 @login_required
 @roles_requeridos('administrador')
-def editar_usuario():
-    datos = request.get_json()
-    usuario = Usuario.query.get(datos["id"])
-    usuario.nombre = datos["nombre"]
-    usuario.email = datos["email"]
-    usuario.rol = datos["rol"]
-    db.session.commit()
-    return jsonify({"mensaje": "Usuario actualizado"})
+def agregar_usuario():
+    form = RegistroForm()
+    return render_template('registro_fragmento.html', form=form)
+
+@main.route('/admin/usuarios/editar_formulario/<int:id>')
+@login_required
+@roles_requeridos('administrador')
+def editar_formulario_usuario(id):
+    usuario = Usuario.query.get_or_404(id)
+    return render_template('partials/usuarios_editar.html', usuario=usuario)
+
 
 @main.route("/admin/usuarios/eliminar/<int:id>", methods=["POST"])
 @login_required
@@ -337,11 +379,10 @@ def nuevo_libro():
         form.titulo.data = data.get('title', '')
         form.autor.data = ', '.join([a['name'] for a in data.get('authors', [])]) if data.get('authors') else ''
         form.editorial.data = ', '.join([p['name'] for p in data.get('publishers', [])]) if data.get('publishers') else ''
-        
-            # 📖 Añadir la descripción si existe
+
+        # 📖 Añadir la descripción si existe
         description = data.get('description')
         if isinstance(description, dict):
-            # Algunos campos son tipo dict con 'value'
             form.descripcion.data = description.get('value', '')
         elif isinstance(description, str):
             form.descripcion.data = description
@@ -351,11 +392,30 @@ def nuevo_libro():
         raw_date = data.get('publish_date', '')
         if raw_date:
             try:
-                if len(raw_date) == 4 and raw_date.isdigit():  # solo año
+                if len(raw_date) == 4 and raw_date.isdigit():
                     raw_date = f"{raw_date}-01-01"
                 form.fecha_publicacion.data = datetime.strptime(raw_date, '%Y-%m-%d').date()
             except ValueError:
                 form.fecha_publicacion.data = None
+
+        # 🖼️ Obtener la URL de la portada y rellenar el formulario
+        portada_url = None
+        if 'cover' in data and 'large' in data['cover']:
+            portada_url = data['cover']['large']
+        elif 'cover' in data and 'medium' in data['cover']:
+            portada_url = data['cover']['medium']
+        elif 'cover' in data and 'small' in data['cover']:
+            portada_url = data['cover']['small']
+        elif isbn_param:
+            portada_url = f"https://covers.openlibrary.org/b/isbn/{isbn_param}-L.jpg?default=false"
+            try:
+                check_resp = requests.head(portada_url)
+                if not check_resp.ok:
+                    portada_url = None
+            except requests.exceptions.RequestException:
+                portada_url = None
+
+        form.portada_url.data = portada_url # Asignar la URL al campo del formulario
 
     if form.validate_on_submit():
         isbn = form.isbn.data
@@ -373,9 +433,9 @@ def nuevo_libro():
                 editorial=form.editorial.data,
                 fecha_publicacion=form.fecha_publicacion.data,
                 cantidad_total=cantidad_total,
-                cantidad_disponible=cantidad_total
+                cantidad_disponible=cantidad_total,
+                portada_url=form.portada_url.data # Guardar la URL de la portada
             )
-            # Actualizar automáticamente el estado
             nuevo_libro.actualizar_estado()
 
             db.session.add(nuevo_libro)
@@ -385,8 +445,6 @@ def nuevo_libro():
             return redirect(url_for('main.admin_libros'))
 
     return render_template('nuevo_libro.html', form=form)
-
-
 
 
 @main.route('/admin/libros/mostrar')
@@ -464,8 +522,32 @@ def escanear_libro():
 @roles_requeridos('administrador')
 def guardar_reserva():
     datos = request.get_json()
-    print('Reserva recibida:', datos)
-    # Guardar en tabla si tienes el modelo Reserva
+    libro_id = datos.get('libro_id')
+    usuario_id = datos.get('usuario_id') # Asume que el ID de usuario viene en los datos si es diferente al current_user
+    fecha_expiracion_str = datos.get('fecha_expiracion')
+
+    if not libro_id or not usuario_id or not fecha_expiracion_str:
+        return jsonify({'mensaje': 'Datos incompletos para la reserva.'}), 400
+
+    try:
+        fecha_expiracion = datetime.strptime(fecha_expiracion_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'mensaje': 'Formato de fecha inválido.'}), 400
+
+    # Verificar disponibilidad del libro para reservar
+    libro = Libro.query.get(libro_id)
+    if not libro or libro.estado == 'eliminado' or libro.cantidad_disponible == 0:
+        return jsonify({'mensaje': 'Libro no disponible para reserva.'}), 400
+
+    # Crear la reserva
+    nueva_reserva = Reserva(
+        libro_id=libro_id,
+        usuario_id=usuario_id,
+        fecha_expiracion=fecha_expiracion,
+        estado='activa'
+    )
+    db.session.add(nueva_reserva)
+    db.session.commit()
     return jsonify({'mensaje': 'Reserva realizada correctamente'})
 
 @main.route('/admin/prestamos/guardar', methods=['POST'])
@@ -473,8 +555,37 @@ def guardar_reserva():
 @roles_requeridos('administrador')
 def guardar_prestamo():
     datos = request.get_json()
-    print('Préstamo recibido:', datos)
-    # Guardar en tabla si tienes el modelo Prestamo
+    libro_id = datos.get('libro_id')
+    usuario_id = datos.get('usuario_id')
+    fecha_devolucion_esperada_str = datos.get('fecha_devolucion_esperada')
+
+    if not libro_id or not usuario_id or not fecha_devolucion_esperada_str:
+        return jsonify({'mensaje': 'Datos incompletos para el préstamo.'}), 400
+
+    try:
+        fecha_devolucion_esperada = datetime.strptime(fecha_devolucion_esperada_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'mensaje': 'Formato de fecha inválido.'}), 400
+
+    # Verificar disponibilidad del libro para préstamo
+    libro = Libro.query.get(libro_id)
+    if not libro or libro.estado == 'eliminado' or libro.cantidad_disponible <= 0:
+        return jsonify({'mensaje': 'Libro no disponible para préstamo.'}), 400
+
+    # Crear el préstamo
+    nuevo_prestamo = Prestamo(
+        libro_id=libro_id,
+        usuario_id=usuario_id,
+        fecha_devolucion_esperada=fecha_devolucion_esperada,
+        estado='prestado'
+    )
+    db.session.add(nuevo_prestamo)
+
+    # Actualizar la cantidad disponible del libro
+    libro.cantidad_disponible -= 1
+    libro.actualizar_estado() # Actualizar el estado del libro (ej. a "prestados" si se agotan)
+
+    db.session.commit()
     return jsonify({'mensaje': 'Préstamo registrado correctamente'})
 
 
@@ -514,3 +625,98 @@ def foto_perfil():
     
     # Si no tiene foto, o no existe el archivo
     return redirect(url_for('static', filename='imagenes/perfil/default.png'))
+
+@main.route('/libro/<int:libro_id>')
+@login_required
+def detalle_libro(libro_id):
+    libro = Libro.query.get_or_404(libro_id)
+    es_favorito = False
+    if current_user.is_authenticated and current_user.rol == 'lector':
+        es_favorito = Favorito.query.filter_by(usuario_id=current_user.id, libro_id=libro.id).first() is not None
+    return render_template('detalle_libro.html', libro=libro, es_favorito=es_favorito)
+
+@main.route('/favoritos/toggle/<int:libro_id>', methods=['POST'])
+@login_required
+@roles_requeridos('lector')
+def toggle_favorito(libro_id):
+    libro = Libro.query.get_or_404(libro_id)
+    favorito = Favorito.query.filter_by(usuario_id=current_user.id, libro_id=libro.id).first()
+
+    if favorito:
+        db.session.delete(favorito)
+        flash('Libro eliminado de tus favoritos.', 'info')
+    else:
+        nuevo_favorito = Favorito(usuario_id=current_user.id, libro_id=libro.id)
+        db.session.add(nuevo_favorito)
+        flash('Libro añadido a tus favoritos.', 'success')
+
+    db.session.commit()
+    return redirect(url_for('main.detalle_libro', libro_id=libro.id))
+
+@main.route('/mis_libros')
+@login_required
+@roles_requeridos('lector')
+def mis_libros():
+    # Obtener préstamos activos del usuario
+    mis_prestamos = Prestamo.query.filter_by(usuario_id=current_user.id, estado='prestado').all()
+    # Obtener reservas activas del usuario
+    mis_reservas = Reserva.query.filter_by(usuario_id=current_user.id, estado='activa').all()
+    # Obtener favoritos del usuario
+    mis_favoritos = Favorito.query.filter_by(usuario_id=current_user.id).all()
+
+    return render_template('mis_libros.html',
+                           prestamos=mis_prestamos,
+                           reservas=mis_reservas,
+                           favoritos=mis_favoritos)
+
+@main.route('/recuperar', methods=['GET', 'POST'])
+def recuperar():
+    if request.method == 'POST':
+        correo = request.form['correo']
+        usuario = Usuario.query.filter_by(correo=correo).first()
+        if usuario:
+            token = generar_token(usuario.correo)
+            link = url_for('main.restablecer', token=token, _external=True)
+
+            msg = Message('Recuperar contraseña', sender='noreply@biblioteca.com', recipients=[usuario.correo])
+            msg.body = (
+                        f'Estimado usuario,\n\n'
+                        f'Hemos recibido una solicitud para restablecer la contraseña de su cuenta de biblioteca avocado.\n'
+                        f'Para continuar con el proceso, por favor haga clic en el siguiente enlace:\n\n'
+                        f'{link}\n\n'
+                        f'Si usted no solicitó este cambio, puede ignorar este mensaje.\n\n'
+                        f'Atentamente,\n'
+                        f'El equipo de la Biblioteca'
+                    )
+
+            mail.send(msg)
+
+            flash('Te enviamos un correo para recuperar tu contraseña.', 'info')
+        else:
+            flash('Correo no encontrado.', 'danger')
+    return render_template('recuperar.html')
+
+@main.route('/restablecer/<token>', methods=['GET', 'POST'])
+def restablecer(token):
+    email = verificar_token(token)
+    if not email:
+        flash('El enlace es inválido o ha expirado.', 'danger')
+        return redirect(url_for('main.login'))
+
+    if request.method == 'POST':
+        nueva_pass = request.form['password']
+        usuario = Usuario.query.filter_by(correo=email).first()
+        if usuario:
+            usuario.set_password(nueva_pass)
+            db.session.commit()
+            flash('Contraseña actualizada correctamente.', 'success')
+            return redirect(url_for('main.login'))
+    return render_template('restablecer.html')
+
+@main.route('/admin/usuarios/mostrar')
+@login_required
+@roles_requeridos('administrador')
+def usuarios_modal():
+    usuarios = Usuario.query.all()
+    return render_template('usuarios_mostrar.html', usuarios=usuarios)
+

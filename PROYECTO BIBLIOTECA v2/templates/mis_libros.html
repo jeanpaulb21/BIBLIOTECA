@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Libros{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Mis Libros</h2>
+
+    <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="prestamos-tab" data-bs-toggle="tab" data-bs-target="#prestamos" type="button" role="tab" aria-controls="prestamos" aria-selected="true">Mis Préstamos</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="reservas-tab" data-bs-toggle="tab" data-bs-target="#reservas" type="button" role="tab" aria-controls="reservas" aria-selected="false">Mis Reservas</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="favoritos-tab" data-bs-toggle="tab" data-bs-target="#favoritos" type="button" role="tab" aria-controls="favoritos" aria-selected="false">Mis Favoritos</button>
+        </li>
+    </ul>
+    <div class="tab-content" id="myTabContent">
+        <div class="tab-pane fade show active" id="prestamos" role="tabpanel" aria-labelledby="prestamos-tab">
+            <h3>Préstamos Activos</h3>
+            {% if prestamos %}
+                <div class="row">
+                    {% for prestamo in prestamos %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <img src="{{ prestamo.libro.portada_url if prestamo.libro.portada_url else url_for('static', filename='imagenes/portada_default.png') }}" class="card-img-top" alt="{{ prestamo.libro.titulo }}" style="height: 200px; object-fit: contain; padding: 10px;">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ prestamo.libro.titulo }}</h5>
+                                <p class="card-text text-muted">Autor: {{ prestamo.libro.autor }}</p>
+                                <p class="card-text"><strong>Fecha Préstamo:</strong> {{ prestamo.fecha_prestamo.strftime('%Y-%m-%d') }}</p>
+                                <p class="card-text"><strong>Fecha Esperada Devolución:</strong> {{ prestamo.fecha_devolucion_esperada.strftime('%Y-%m-%d') }}</p>
+                                <p class="card-text"><strong>Estado:</strong> <span class="badge bg-primary">{{ prestamo.estado }}</span></p>
+                                <a href="{{ url_for('main.detalle_libro', libro_id=prestamo.libro.id) }}" class="btn btn-outline-info btn-sm">Ver Detalles del Libro</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>No tienes préstamos activos en este momento.</p>
+            {% endif %}
+        </div>
+        <div class="tab-pane fade" id="reservas" role="tabpanel" aria-labelledby="reservas-tab">
+            <h3>Reservas Activas</h3>
+            {% if reservas %}
+                <div class="row">
+                    {% for reserva in reservas %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                             <img src="{{ reserva.libro.portada_url if reserva.libro.portada_url else url_for('static', filename='imagenes/portada_default.png') }}" class="card-img-top" alt="{{ reserva.libro.titulo }}" style="height: 200px; object-fit: contain; padding: 10px;">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ reserva.libro.titulo }}</h5>
+                                <p class="card-text text-muted">Autor: {{ reserva.libro.autor }}</p>
+                                <p class="card-text"><strong>Fecha Reserva:</strong> {{ reserva.fecha_reserva.strftime('%Y-%m-%d %H:%M') }}</p>
+                                <p class="card-text"><strong>Fecha Expiración:</strong> {{ reserva.fecha_expiracion.strftime('%Y-%m-%d') }}</p>
+                                <p class="card-text"><strong>Estado:</strong> <span class="badge bg-warning text-dark">{{ reserva.estado }}</span></p>
+                                <a href="{{ url_for('main.detalle_libro', libro_id=reserva.libro.id) }}" class="btn btn-outline-info btn-sm">Ver Detalles del Libro</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>No tienes reservas activas en este momento.</p>
+            {% endif %}
+        </div>
+        <div class="tab-pane fade" id="favoritos" role="tabpanel" aria-labelledby="favoritos-tab">
+            <h3>Mis Libros Favoritos</h3>
+            {% if favoritos %}
+                <div class="row">
+                    {% for favorito in favoritos %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                             <img src="{{ favorito.libro.portada_url if favorito.libro.portada_url else url_for('static', filename='imagenes/portada_default.png') }}" class="card-img-top" alt="{{ favorito.libro.titulo }}" style="height: 200px; object-fit: contain; padding: 10px;">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ favorito.libro.titulo }}</h5>
+                                <p class="card-text text-muted">Autor: {{ favorito.libro.autor }}</p>
+                                <p class="card-text"><strong>Categoría:</strong> {{ favorito.libro.categoria }}</p>
+                                <p class="card-text"><strong>Agregado el:</strong> {{ favorito.fecha_agregado.strftime('%Y-%m-%d') }}</p>
+                                <a href="{{ url_for('main.detalle_libro', libro_id=favorito.libro.id) }}" class="btn btn-outline-info btn-sm">Ver Detalles</a>
+                                <form action="{{ url_for('main.toggle_favorito', libro_id=favorito.libro.id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger btn-sm">Quitar de Favoritos</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>Aún no has añadido ningún libro a tus favoritos.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

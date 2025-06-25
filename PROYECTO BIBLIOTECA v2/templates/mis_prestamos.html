@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Préstamos - Mi Biblioteca{% endblock %}
+
+{% block content %}
+<h1>Mis Préstamos</h1>
+
+{% if prestamos %}
+    <div class="list-group">
+        {% for prestamo in prestamos %}
+            <div class="list-group-item list-group-item-dark mb-2 rounded">
+                <h5>{{ prestamo.libro.titulo }}</h5>
+                <p><strong>Autor:</strong> {{ prestamo.libro.autor }}</p>
+                <p><strong>Fecha de préstamo:</strong> {{ prestamo.fecha_prestamo.strftime('%d/%m/%Y') }}</p>
+                <p><strong>Fecha de devolución:</strong> {{ prestamo.fecha_devolucion.strftime('%d/%m/%Y') }}</p>
+                <p><strong>Estado:</strong> {{ prestamo.estado.capitalize() }}</p>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        No tienes préstamos activos en este momento.
+    </div>
+{% endif %}
+{% endblock %}

@@ -1,12 +1,12 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SelectField, DateField, SubmitField, TextAreaField, IntegerField
+from wtforms import StringField, PasswordField, SelectField, DateField, SubmitField, TextAreaField, IntegerField, HiddenField # Importa HiddenField
 from wtforms.validators import DataRequired, Length, EqualTo, Regexp, ValidationError, Optional, NumberRange, Email
 from app.models import Usuario
 from datetime import date
 
 class RegistroForm(FlaskForm):
     username = StringField('Nombre de usuario', validators=[DataRequired(), Length(min=4, max=25)])
-    correo = StringField('Correo electrónico', validators=[DataRequired(), Email()])  # NUEVO
+    correo = StringField('Correo electrónico', validators=[DataRequired(), Email()])
     password = PasswordField('Contraseña', validators=[
         DataRequired(),
         Length(min=8, message='La contraseña debe tener al menos 8 caracteres'),
@@ -22,7 +22,7 @@ class RegistroForm(FlaskForm):
         usuario = Usuario.query.filter_by(username=username.data).first()
         if usuario:
             raise ValidationError('El nombre de usuario ya está en uso. Por favor elige otro.')
-        
+
     def validate_correo(self, correo):
         usuario = Usuario.query.filter_by(correo=correo.data).first()
         if usuario:
@@ -59,6 +59,7 @@ class LibroForm(FlaskForm):
         'Cantidad Total',
         validators=[DataRequired(), NumberRange(min=0)]
     )
+    portada_url = HiddenField('URL de Portada', validators=[Optional()]) # Nuevo campo oculto
     submit = SubmitField('Guardar')
 
 class EditarLibroForm(FlaskForm):
@@ -98,5 +99,5 @@ class EditarLibroForm(FlaskForm):
         "Editorial",
         validators=[Optional()]
     )
+    portada_url = HiddenField('URL de Portada', validators=[Optional()]) # Nuevo campo oculto
     submit = SubmitField("Guardar cambios")
-
