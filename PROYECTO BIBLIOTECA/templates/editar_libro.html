@@ -1,49 +1,103 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8" />
-    <title>Editar Libro</title>
-</head>
-<body>
-    <h1>Editar libro: {{ libro.titulo }}</h1>
-    <p><a href="{{ url_for('main.lista_libros') }}">Volver a la lista de libros</a></p>
+<!-- editar_reserva.html -->
+<div class="form-box2">
+  <h2 class="text-center text-white mb-3">Editar Reserva #{{ reserva.id }}</h2>
+  <p class="descripcion-libro">Modifica los datos de la reserva y guarda los cambios.</p>
 
-    <form method="POST" action="{{ url_for('main.editar_libro', libro_id=libro.id) }}">
-        {{ form.hidden_tag() }}
+  <form method="POST" action="{{ url_for('main.editar_reserva', reserva_id=reserva.id) }}">
+    {{ form.hidden_tag() }}
 
-        <p>
-            {{ form.titulo.label }}<br>
-            {{ form.titulo(size=50) }}<br>
-            {% for error in form.titulo.errors %}
-                <span style="color: red;">{{ error }}</span><br>
-            {% endfor %}
-        </p>
+    <div class="mb-3">
+      {{ form.usuario_id.label(class="form-label") }}
+      {{ form.usuario_id(class="form-select") }}
+      {% for error in form.usuario_id.errors %}
+        <div class="text-danger">{{ error }}</div>
+      {% endfor %}
+    </div>
 
-        <p>
-            {{ form.autor.label }}<br>
-            {{ form.autor(size=50) }}<br>
-            {% for error in form.autor.errors %}
-                <span style="color: red;">{{ error }}</span><br>
-            {% endfor %}
-        </p>
+    <div class="mb-3">
+      {{ form.libro_id.label(class="form-label") }}
+      {{ form.libro_id(class="form-select") }}
+      {% for error in form.libro_id.errors %}
+        <div class="text-danger">{{ error }}</div>
+      {% endfor %}
+    </div>
 
-        <p>
-            {{ form.isbn.label }}<br>
-            {{ form.isbn(size=30) }}<br>
-            {% for error in form.isbn.errors %}
-                <span style="color: red;">{{ error }}</span><br>
-            {% endfor %}
-        </p>
+    <div class="mb-3">
+      {{ form.fecha_expiracion.label(class="form-label") }}
+      {{ form.fecha_expiracion(class="form-control", type="date") }}
+      {% for error in form.fecha_expiracion.errors %}
+        <div class="text-danger">{{ error }}</div>
+      {% endfor %}
+    </div>
 
-        <p>
-            {{ form.descripcion.label }}<br>
-            {{ form.descripcion(rows=4, cols=50) }}<br>
-            {% for error in form.descripcion.errors %}
-                <span style="color: red;">{{ error }}</span><br>
-            {% endfor %}
-        </p>
+    <div class="mb-3">
+      {{ form.estado.label(class="form-label") }}
+      {{ form.estado(class="form-select") }}
+      {% for error in form.estado.errors %}
+        <div class="text-danger">{{ error }}</div>
+      {% endfor %}
+    </div>
 
-        <p>{{ form.submit() }}</p>
-    </form>
-</body>
-</html>
+    <div class="d-flex justify-content-between mt-4">
+      <a href="{{ url_for('main.reservas_tabla') }}" class="btn btn-danger">Cancelar</a>
+      {{ form.submit(class="btn btn-success") }}
+    </div>
+  </form>
+</div>
+
+<style>
+  .form-box2 {
+    background-color: #1a1a40;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
+    color: white;
+    max-width: 600px;
+    margin: auto;
+  }
+
+  .descripcion-libro {
+    text-align: center;
+    font-size: 1rem;
+    margin-bottom: 25px;
+    color: #ccc;
+  }
+
+  .form-label {
+    font-weight: bold;
+    color: white;
+  }
+
+  .form-control,
+  .form-select {
+    background-color: #1c1c3c;
+    border: 1px solid #555;
+    color: white;
+  }
+
+  .form-control::placeholder {
+    color: #aaa;
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    border-color: #61dafb;
+    box-shadow: 0 0 0 0.2rem rgba(97, 218, 251, 0.25);
+  }
+
+  .btn-success {
+    background-color: #28a745;
+    border-radius: 25px;
+    padding: 10px 20px;
+    font-weight: bold;
+  }
+
+  .btn-danger {
+    border-radius: 25px;
+    padding: 10px 20px;
+  }
+
+  .text-danger {
+    color: #ff4c4c !important;
+  }
+</style>

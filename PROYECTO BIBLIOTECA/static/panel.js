@@ -1,7 +1,12 @@
 function loadContent(pagina) {
-  document.getElementById('main-content').src = `/admin/${pagina}`;
-}
+  const iframe = document.getElementById('main-content');
+  iframe.classList.add("fade-out");
 
+  setTimeout(() => {
+    iframe.src = `/admin/${pagina}`;
+    iframe.classList.remove("fade-out");
+  }, 150);
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const links = document.querySelectorAll(".menu-link");

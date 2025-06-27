@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Agregar Préstamo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light p-4">
+  <div class="container bg-white p-4 rounded shadow-sm" style="max-width: 600px;">
+    <h2 class="text-center mb-3">Agregar Préstamo</h2>
+    <p class="text-center text-muted">Completa los campos para registrar un nuevo préstamo.</p>
+
+    <form method="POST" action="{{ url_for('main.nuevo_prestamo') }}">
+      {{ form.hidden_tag() }}
+
+      <div class="mb-3">
+        {{ form.usuario_id.label(class="form-label") }}
+        {{ form.usuario_id(class="form-select") }}
+        {% for error in form.usuario_id.errors %}
+          <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="mb-3">
+        {{ form.libro_id.label(class="form-label") }}
+        {{ form.libro_id(class="form-select") }}
+        {% for error in form.libro_id.errors %}
+          <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="d-flex justify-content-between">
+        <a href="{{ url_for('main.mostrar_prestamos') }}" class="btn btn-secondary">Cancelar</a>
+        {{ form.submit(class="btn btn-success") }}
+      </div>
+    </form>
+  </div>
+</body>
+</html>
