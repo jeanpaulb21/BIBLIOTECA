@@ -17,7 +17,7 @@
       {% for prestamo in prestamos %}
       <tr>
         <td>{{ prestamo.id }}</td>
-        <td>{{ prestamo.usuario.username }}</td>
+        <td>{{ prestamo.usuario.nombre }}</td>
         <td>{{ prestamo.libro.titulo }}</td>
         <td>{{ prestamo.fecha_prestamo.strftime('%Y-%m-%d') }}</td>
         <td>

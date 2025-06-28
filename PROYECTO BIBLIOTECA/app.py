@@ -3,6 +3,7 @@ from app.extensions import db, login_manager, mail
 from app.models import Usuario
 from app.routes import main
 from app.config import Config
+from datetime import datetime
 
 def create_app():
     app = Flask(__name__)
@@ -15,12 +16,26 @@ def create_app():
     app.register_blueprint(main)
 
     with app.app_context():
-        db.create_all()
+        # ¡IMPORTANTE! Crea todas las tablas si no existen
+        db.create_all() # <-- Agrega esta línea aquí
+
         if not Usuario.query.filter_by(rol='administrador').first():
-            admin = Usuario(username='admin', correo='admin@biblioteca.com', rol='administrador')
+            admin = Usuario(
+                nombre='admin',
+                apellido='admin',
+                correo='admin@biblioteca.com',
+                documento='1000000000',
+                direccion='Oficina principal',
+                telefono='0000000000',
+                fecha_nacimiento=datetime(1990, 1, 1),
+                rol='administrador',
+                activo=True
+            )
             admin.set_password('admin123')
+            admin.generar_llave_prestamo()
             db.session.add(admin)
             db.session.commit()
+
             print("Usuario administrador creado: usuario=admin, contraseña=admin123")
 
     return app

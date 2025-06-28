@@ -16,19 +16,31 @@
     <form method="POST" action="{{ url_for('main.registro') }}">
       {{ form.hidden_tag() }}
 
-      <!-- Usuario -->
+      <!-- Nombre -->
       <div class="mb-3 text-start">
-        {{ form.username.label(class="form-label") }}
+        {{ form.nombre.label(class="form-label") }}
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-person"></i></span>
-          {{ form.username(class="form-control", placeholder="Nombre de usuario") }}
+          {{ form.nombre(class="form-control", placeholder="Nombre") }}
         </div>
-        {% for error in form.username.errors %}
+        {% for error in form.nombre.errors %}
           <div class="error-message">{{ error }}</div>
         {% endfor %}
       </div>
 
-      <!-- Correo -->
+      <!-- Apellido -->
+      <div class="mb-3 text-start">
+        {{ form.apellido.label(class="form-label") }}
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-person-vcard"></i></span>
+          {{ form.apellido(class="form-control", placeholder="Apellido") }}
+        </div>
+        {% for error in form.apellido.errors %}
+          <div class="error-message">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <!-- Correo electrónico -->
       <div class="mb-3 text-start">
         {{ form.correo.label(class="form-label") }}
         <div class="input-group">
@@ -36,6 +48,54 @@
           {{ form.correo(class="form-control", placeholder="Correo electrónico") }}
         </div>
         {% for error in form.correo.errors %}
+          <div class="error-message">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <!-- Documento -->
+      <div class="mb-3 text-start">
+        {{ form.documento.label(class="form-label") }}
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+          {{ form.documento(class="form-control", placeholder="Número de documento") }}
+        </div>
+        {% for error in form.documento.errors %}
+          <div class="error-message">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <!-- Dirección -->
+      <div class="mb-3 text-start">
+        {{ form.direccion.label(class="form-label") }}
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+          {{ form.direccion(class="form-control", placeholder="Dirección") }}
+        </div>
+        {% for error in form.direccion.errors %}
+          <div class="error-message">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <!-- Teléfono -->
+      <div class="mb-3 text-start">
+        {{ form.telefono.label(class="form-label") }}
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+          {{ form.telefono(class="form-control", placeholder="Número de teléfono") }}
+        </div>
+        {% for error in form.telefono.errors %}
+          <div class="error-message">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <!-- Fecha de nacimiento -->
+      <div class="mb-3 text-start">
+        {{ form.fecha_nacimiento.label(class="form-label") }}
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+          {{ form.fecha_nacimiento(class="form-control", type="date") }}
+        </div>
+        {% for error in form.fecha_nacimiento.errors %}
           <div class="error-message">{{ error }}</div>
         {% endfor %}
       </div>
@@ -52,7 +112,7 @@
         {% endfor %}
       </div>
 
-      <!-- Confirmar contraseña -->
+      <!-- Confirmar Contraseña -->
       <div class="mb-3 text-start">
         {{ form.confirm_password.label(class="form-label") }}
         <div class="input-group">
@@ -64,12 +124,12 @@
         {% endfor %}
       </div>
 
-      <!-- Botón registrar -->
+      <!-- Botón Registrar -->
       <div class="d-grid mb-3">
         {{ form.submit(class="btn btn-success w-100") }}
       </div>
 
-      <!-- Link a login -->
+      <!-- Link a Login -->
       <a href="{{ url_for('main.login') }}" class="btn btn-secondary w-100">¿Ya tienes cuenta? Inicia sesión</a>
     </form>
   </div>

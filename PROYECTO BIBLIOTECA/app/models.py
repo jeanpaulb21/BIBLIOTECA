@@ -4,25 +4,37 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from sqlalchemy import Enum
 from app.extensions import db
+import secrets
 
 # ------------------ MODELO USUARIO ------------------
 
 class Usuario(db.Model, UserMixin):
     __tablename__ = 'usuarios'
-
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
+    nombre = db.Column(db.String(50), nullable=False)
+    apellido = db.Column(db.String(50), nullable=False)
     correo = db.Column(db.String(100), unique=True, nullable=False)
-    rol = db.Column(db.String(20), nullable=False)
+    documento = db.Column(db.String(20), unique=True, nullable=False)
+    direccion = db.Column(db.String(100), nullable=False)
+    telefono = db.Column(db.String(20), nullable=False)
+    fecha_nacimiento = db.Column(db.Date, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    rol = db.Column(db.String(20), nullable=False, default='usuario')
     activo = db.Column(db.Boolean, default=True)
     fecha_creacion = db.Column(db.DateTime, default=db.func.current_timestamp())
     foto = db.Column(db.String(255))
+    llave_prestamo = db.Column(db.String(12), unique=True)  # Ejemplo: 123-456
 
     # Relaciones
     prestamos = db.relationship("Prestamo", back_populates="usuario", cascade="all, delete-orphan")
     reservas = db.relationship("Reserva", back_populates="usuario", cascade="all, delete-orphan")
     favoritos = db.relationship("Favorito", back_populates="usuario", cascade="all, delete-orphan")
+
+    # Métodos utilitarios
+    def generar_llave_prestamo(self):
+        parte1 = str(secrets.randbelow(900) + 100)  # 100–999
+        parte2 = str(secrets.randbelow(900) + 100)
+        self.llave_prestamo = f"{parte1}-{parte2}"
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -31,7 +43,8 @@ class Usuario(db.Model, UserMixin):
         return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
-        return f"<Usuario(id={self.id}, username='{self.username}')>"
+        return f"<Usuario(id={self.id}, correo='{self.correo}')>"
+
 
 
 # ------------------ MODELO LIBRO ------------------
@@ -80,7 +93,7 @@ class Prestamo(db.Model):
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     fecha_prestamo = db.Column(db.Date, nullable=False, default=datetime.utcnow)
     fecha_devolucion_esperada = db.Column(db.Date, nullable=False)
-    fecha_devolucion = db.Column(db.Date)  # Se usa este nombre para que coincida con las plantillas
+    fecha_devolucion = db.Column(db.Date)  # Se usa este correo para que coincida con las plantillas
     estado = db.Column(
         Enum('prestado', 'devuelto', 'atrasado', 'activo', name='estado_prestamo'),
         nullable=False,

@@ -17,7 +17,7 @@
       {% for reserva in reservas %}
       <tr>
         <td>{{ reserva.id }}</td>
-        <td>{{ reserva.usuario.username }}</td>
+        <td>{{ reserva.usuario.nombre }}</td>
         <td>{{ reserva.libro.titulo }}</td>
         <td>{{ reserva.fecha_reserva.strftime('%Y-%m-%d') }}</td>
         <td>{{ reserva.fecha_expiracion.strftime('%Y-%m-%d') }}</td>

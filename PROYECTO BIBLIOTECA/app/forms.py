@@ -1,32 +1,37 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SelectField, DateField, SubmitField, TextAreaField, IntegerField, HiddenField # Importa HiddenField
+from wtforms import StringField, PasswordField, SelectField, DateField, SubmitField, TextAreaField, IntegerField, HiddenField
 from wtforms.validators import DataRequired, Length, EqualTo, Regexp, ValidationError, Optional, NumberRange, Email
 from app.models import Usuario
 from datetime import date
 
 class RegistroForm(FlaskForm):
-    username = StringField('Nombre de usuario', validators=[DataRequired(), Length(min=4, max=25)])
+    nombre = StringField('Nombre', validators=[DataRequired(), Length(min=2, max=50)])
+    apellido = StringField('Apellido', validators=[DataRequired(), Length(min=2, max=50)])
     correo = StringField('Correo electrónico', validators=[DataRequired(), Email()])
+    documento = StringField('Número de Documento', validators=[DataRequired(), Length(min=5, max=20)])
+    direccion = StringField('Dirección', validators=[DataRequired(), Length(min=5, max=100)])
+    telefono = StringField('Teléfono', validators=[DataRequired(), Length(min=7, max=20)])
+    fecha_nacimiento = DateField('Fecha de Nacimiento', format='%Y-%m-%d', validators=[DataRequired()])
     password = PasswordField('Contraseña', validators=[
         DataRequired(),
         Length(min=8, message='La contraseña debe tener al menos 8 caracteres'),
-        Regexp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$', message='La contraseña debe ser alfanumérica (letras y números).')
+        Regexp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$', message='Debe contener letras y números.')
     ])
+
     confirm_password = PasswordField('Confirmar contraseña', validators=[
         DataRequired(),
         EqualTo('password', message='Las contraseñas deben coincidir')
     ])
+
     submit = SubmitField('Registrarse')
 
-    def validate_username(self, username):
-        usuario = Usuario.query.filter_by(username=username.data).first()
-        if usuario:
-            raise ValidationError('El nombre de usuario ya está en uso. Por favor elige otro.')
-
     def validate_correo(self, correo):
-        usuario = Usuario.query.filter_by(correo=correo.data).first()
-        if usuario:
-            raise ValidationError('Ya existe una cuenta con este correo electrónico.')
+        if Usuario.query.filter_by(correo=correo.data).first():
+            raise ValidationError('Ya existe una cuenta con este correo.')
+
+    def validate_documento(self, documento):
+        if Usuario.query.filter_by(documento=documento.data).first():
+            raise ValidationError('Ya existe una cuenta con este número de documento.')
 
 class LibroForm(FlaskForm):
     isbn = StringField('ISBN', validators=[DataRequired()])
@@ -50,16 +55,9 @@ class LibroForm(FlaskForm):
         validators=[DataRequired()]
     )
     editorial = StringField('Editorial')
-    fecha_publicacion = DateField(
-        'Fecha de Publicación',
-        format='%Y-%m-%d',
-        validators=[Optional()]
-    )
-    cantidad_total = IntegerField(
-        'Cantidad Total',
-        validators=[DataRequired(), NumberRange(min=0)]
-    )
-    portada_url = HiddenField('URL de Portada', validators=[Optional()]) # Nuevo campo oculto
+    fecha_publicacion = DateField('Fecha de Publicación', format='%Y-%m-%d', validators=[Optional()])
+    cantidad_total = IntegerField('Cantidad Total', validators=[DataRequired(), NumberRange(min=0)])
+    portada_url = HiddenField('URL de Portada', validators=[Optional()])
     submit = SubmitField('Guardar')
 
 class EditarLibroForm(FlaskForm):
@@ -82,38 +80,30 @@ class EditarLibroForm(FlaskForm):
         ],
         validators=[DataRequired()]
     )
-    cantidad_total = IntegerField(
-        "Cantidad Total",
-        validators=[Optional(), NumberRange(min=0)]
-    )
-    cantidad_disponible = IntegerField(
-        "Cantidad Disponible",
-        validators=[Optional(), NumberRange(min=0)]
-    )
-    fecha_publicacion = DateField(
-        "Fecha de Publicación",
-        format='%Y-%m-%d',
-        validators=[Optional()]
-    )
-    editorial = StringField(
-        "Editorial",
-        validators=[Optional()]
-    )
-    portada_url = HiddenField('URL de Portada', validators=[Optional()]) # Nuevo campo oculto
+    cantidad_total = IntegerField("Cantidad Total", validators=[Optional(), NumberRange(min=0)])
+    cantidad_disponible = IntegerField("Cantidad Disponible", validators=[Optional(), NumberRange(min=0)])
+    fecha_publicacion = DateField("Fecha de Publicación", format='%Y-%m-%d', validators=[Optional()])
+    editorial = StringField("Editorial", validators=[Optional()])
+    portada_url = HiddenField('URL de Portada', validators=[Optional()])
     submit = SubmitField("Guardar cambios")
 
 class PrestamoForm(FlaskForm):
-    usuario_id = SelectField("Usuario", coerce=int, validators=[DataRequired()])
+    llave_prestamo = StringField("Llave de préstamo", validators=[
+        DataRequired(),
+        Length(min=7, max=7, message="La llave debe tener el formato XXX-XXX (7 caracteres)")
+    ])
     libro_id = SelectField("Libro", coerce=int, validators=[DataRequired()])
     submit = SubmitField("Guardar")
 
-
-
 class NuevaReservaForm(FlaskForm):
-    usuario_id = SelectField('Usuario', coerce=int, validators=[DataRequired()])
-    libro_id = SelectField('Libro', coerce=int, validators=[DataRequired()])
-    fecha_expiracion = HiddenField(validators=[DataRequired()])
-    submit = SubmitField('Guardar Reserva')
+    llave_prestamo = StringField("Llave de préstamo", validators=[
+        DataRequired(),
+        Length(min=7, max=7, message="La llave debe tener el formato XXX-XXX")
+    ])
+    libro_id = SelectField("Libro", coerce=int, validators=[DataRequired()])
+    fecha_expiracion = DateField("Fecha Expiración", format='%Y-%m-%d')
+    submit = SubmitField("Guardar")
+
 
 class EditarReservaForm(FlaskForm):
     usuario_id = SelectField('Usuario', coerce=int, validators=[DataRequired()])
@@ -126,5 +116,3 @@ class EditarReservaForm(FlaskForm):
         ('confirmada', 'Confirmada')
     ], validators=[DataRequired()])
     submit = SubmitField('Guardar cambios')
-
-

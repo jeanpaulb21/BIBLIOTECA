@@ -15,9 +15,9 @@
   </thead>
   <tbody>
     {% for usuario in usuarios %}
-    <tr data-id="{{ usuario.id }}" data-nombre="{{ usuario.username }}" data-email="{{ usuario.correo }}" data-rol="{{ usuario.rol }}">
+    <tr data-id="{{ usuario.id }}" data-nombre="{{ usuario.nombre }}" data-email="{{ usuario.correo }}" data-rol="{{ usuario.rol }}">
       <td>{{ usuario.id }}</td>
-      <td>{{ usuario.username }}</td>
+      <td>{{ usuario.nombre }}</td>
       <td>{{ usuario.correo }}</td>
       <td>{{ usuario.rol }}</td>
       <td>

@@ -2,12 +2,12 @@
   {{ form.hidden_tag() }}
 
   <div class="mb-3 text-start">
-    {{ form.username.label(class="form-label") }}
+    {{ form.nombre.label(class="form-label") }}
     <div class="input-group">
       <span class="input-group-text"><i class="bi bi-person"></i></span>
-      {{ form.username(class="form-control", placeholder="Nombre de usuario") }}
+      {{ form.nombre(class="form-control", placeholder="Nombre de usuario") }}
     </div>
-    {% for error in form.username.errors %}
+    {% for error in form.nombre.errors %}
       <div class="error-message">{{ error }}</div>
     {% endfor %}
   </div>

@@ -7,7 +7,7 @@
     {% for usuario in usuarios %}
       <tr>
         <td>{{ usuario.id }}</td>
-        <td>{{ usuario.username }}</td>
+        <td>{{ usuario.nombre }}</td>
         <td>{{ usuario.rol }}</td>
         <td>{{ 'Sí' if usuario.activo else 'No' }}</td>
       </tr>

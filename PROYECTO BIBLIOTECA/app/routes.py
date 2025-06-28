@@ -13,7 +13,7 @@ import requests
 from app.extensions import db, login_manager, mail
 from app.models import Usuario, Libro, Prestamo, Reserva, Favorito
 from app.forms import RegistroForm, LibroForm, EditarLibroForm, EditarReservaForm, NuevaReservaForm, PrestamoForm
-from app.utils import verificar_token, generar_token
+from app.utils import verificar_token, generar_token, generar_llave_prestamo
 from app.libro import prestar_libro, devolver_libro
 
 
@@ -45,34 +45,49 @@ def index():
 def registro():
     form = RegistroForm()
     if form.validate_on_submit():
-        username = form.username.data
-        correo = form.correo.data  # NUEVO
+        # Obtener todos los datos del formulario
+        nombre = form.nombre.data
+        apellido = form.apellido.data
+        correo = form.correo.data
+        documento = form.documento.data
+        direccion = form.direccion.data
+        telefono = form.telefono.data
+        fecha_nacimiento = form.fecha_nacimiento.data
         password = form.password.data
 
-        if Usuario.query.filter_by(username=username).first():
-            flash('El nombre de usuario ya existe', 'error')
+        # Validar duplicados extra (opcional, ya validado en form)
+        if Usuario.query.filter_by(correo=correo).first():
+            flash('Correo no disponible.', 'danger')
+            return redirect(url_for('main.registro'))
+        if Usuario.query.filter_by(documento=documento).first():
+            flash('Número de documento ya registrado.', 'danger')
             return redirect(url_for('main.registro'))
 
-        if Usuario.query.filter_by(correo=correo).first():  # NUEVO
-            flash('Correo no disponible', 'error')
-            return redirect(url_for('main.registro'))
-
+        # Crear usuario
         nuevo_usuario = Usuario(
-            username=username,
-            correo=correo,       # NUEVO
+            nombre=nombre,
+            apellido=apellido,
+            correo=correo,
+            documento=documento,
+            direccion=direccion,
+            telefono=telefono,
+            fecha_nacimiento=fecha_nacimiento,
             rol='lector',
             activo=True
         )
+
+        # Generar llave_prestamo de préstamo y contraseña
+        nuevo_usuario.generar_llave_prestamo()
         nuevo_usuario.set_password(password)
 
+        # Guardar en base de datos
         db.session.add(nuevo_usuario)
         db.session.commit()
 
-        flash('Registro exitoso, ya puedes iniciar sesión.', 'success')
+        flash('Registro exitoso. Ya puedes iniciar sesión.', 'success')
         return redirect(url_for('main.login'))
 
     return render_template('registro.html', form=form)
-
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
@@ -116,7 +131,7 @@ def lista_usuarios():
 def toggle_usuario(usuario_id):
     usuario = Usuario.query.get_or_404(usuario_id)
 
-    if usuario.username == 'admin':
+    if usuario.nombre == 'admin':
         flash('No se puede desactivar al administrador principal.', 'error')
         return redirect(url_for('main.lista_usuarios'))
 
@@ -128,7 +143,7 @@ def toggle_usuario(usuario_id):
     db.session.commit()
 
     estado = 'activado' if usuario.activo else 'desactivado'
-    flash(f"El usuario '{usuario.username}' ha sido {estado}.", 'success')
+    flash(f"El usuario '{usuario.nombre}' ha sido {estado}.", 'success')
     return redirect(url_for('main.lista_usuarios'))
 
 @main.route('/usuarios/<int:usuario_id>/cambiar_rol', methods=['POST'])
@@ -137,7 +152,7 @@ def toggle_usuario(usuario_id):
 def cambiar_rol(usuario_id):
     usuario = Usuario.query.get_or_404(usuario_id)
 
-    if usuario.username == 'admin':
+    if usuario.nombre == 'admin':
         flash('No se puede cambiar el rol del administrador principal.', 'error')
         return redirect(url_for('main.lista_usuarios'))
 
@@ -150,7 +165,7 @@ def cambiar_rol(usuario_id):
 
     usuario.rol = nuevo_rol
     db.session.commit()
-    flash(f"El rol del usuario '{usuario.username}' ha sido cambiado a {nuevo_rol}.", 'success')
+    flash(f"El rol del usuario '{usuario.nombre}' ha sido cambiado a {nuevo_rol}.", 'success')
     return redirect(url_for('main.lista_usuarios'))
 
 @main.route('/admin/inicio', endpoint='inicio')
@@ -281,11 +296,14 @@ def configuracion():
 
     if request.method == 'POST':
         nombre = request.form.get('nombre')
+        apellido = request.form.get('apellido')
         correo = request.form.get('correo')
         archivo = request.files.get('foto_perfil')
 
         if nombre:
-            usuario.username = nombre  # Cambia esto si usas otro campo para el nombre
+            usuario.nombre = nombre
+        if apellido:
+            usuario.apellido = apellido
         if correo:
             usuario.correo = correo
 
@@ -304,6 +322,7 @@ def configuracion():
         return redirect(url_for('main.configuracion'))
 
     return render_template('configuracion.html', usuario=usuario)
+
 
 
 @main.route('/catalogo')
@@ -504,19 +523,28 @@ def escanear_libro():
 @roles_requeridos('administrador')
 def reservas_agregar():
     form = NuevaReservaForm()
-    usuarios = Usuario.query.all()
-    libros = Libro.query.all()
 
-    form.usuario_id.choices = [(u.id, u.username) for u in usuarios]
-    form.libro_id.choices = [(l.id, l.titulo) for l in libros]
+    # Solo libro es selección manual
+    form.libro_id.choices = [(l.id, l.titulo) for l in Libro.query.all()]
 
-    # Establecer por defecto la fecha de expiración a hoy + 7
+    # Prellenar fecha expiración
     if request.method == 'GET':
-        form.fecha_expiracion.data = (date.today() + timedelta(days=7)).strftime('%Y-%m-%d')
+       form.fecha_expiracion.data = date.today() + timedelta(days=7)
 
     if form.validate_on_submit():
+        # Recuperar usuario_id directo del input oculto
+        usuario_id = request.form.get('usuario_id')
+        usuario = Usuario.query.get(usuario_id)
+
+        # Validar que exista y que la llave_prestamo coincida
+        if form.validate_on_submit():
+            usuario = Usuario.query.filter_by(llave_prestamo=form.llave_prestamo.data).first()
+            if not usuario:
+                flash('Llave incorrecta.', 'danger')
+                return redirect(url_for('main.reservas_tabla'))
+        # Registrar reserva
         nueva_reserva = Reserva(
-            usuario_id=form.usuario_id.data,
+            usuario_id=usuario.id,
             libro_id=form.libro_id.data,
             fecha_expiracion=date.today() + timedelta(days=7),
             estado='activa'
@@ -529,6 +557,9 @@ def reservas_agregar():
     return render_template('reservas_agregar.html', form=form)
 
 
+
+
+
 @main.route('/admin/reservas/editar/<int:reserva_id>', methods=['GET', 'POST'])
 @login_required
 @roles_requeridos('administrador')
@@ -537,7 +568,7 @@ def editar_reserva(reserva_id):
     form = EditarReservaForm(obj=reserva)
 
     # ⚠️ Importante: cargar las opciones para los select
-    form.usuario_id.choices = [(u.id, u.username) for u in Usuario.query.order_by(Usuario.username).all()]
+    form.usuario_id.choices = [(u.id, u.nombre) for u in Usuario.query.order_by(Usuario.nombre).all()]
     form.libro_id.choices = [(l.id, l.titulo) for l in Libro.query.order_by(Libro.titulo).all()]
 
     if request.method == 'GET':
@@ -630,17 +661,20 @@ def reservas_tabla():
 def nuevo_prestamo():
     form = PrestamoForm()
 
-    # Llenar los select con datos reales
-    form.usuario_id.choices = [(u.id, u.username) for u in Usuario.query.all()]
+    # ⚡ Llena libros disponibles antes de validar
     form.libro_id.choices = [(l.id, l.titulo) for l in Libro.query.filter(Libro.cantidad_disponible > 0).all()]
 
     if form.validate_on_submit():
-        libro = Libro.query.get(form.libro_id.data)
+        usuario = Usuario.query.filter_by(llave_prestamo=form.llave_prestamo.data).first()
+        if not usuario:
+            flash('Llave incorrecta.', 'danger')
+            return redirect(url_for('main.nuevo_prestamo'))
 
+        libro = Libro.query.get(form.libro_id.data)
         if libro and libro.cantidad_disponible > 0:
             nuevo_prestamo = Prestamo(
-                usuario_id=form.usuario_id.data,
-                libro_id=form.libro_id.data,
+                usuario_id=usuario.id,
+                libro_id=libro.id,
                 fecha_prestamo=datetime.now().date(),
                 fecha_devolucion_esperada=(datetime.now() + timedelta(days=7)).date(),
                 estado='activo'
@@ -654,6 +688,10 @@ def nuevo_prestamo():
             flash('El libro no está disponible.', 'danger')
 
     return render_template('prestamos_agregar.html', form=form)
+
+
+
+
 
 @main.route('/admin/prestamos/devolver/<int:prestamo_id>', methods=['POST'])
 @login_required
@@ -852,4 +890,19 @@ def libros_atrasados():
      .group_by(Libro.id).order_by(func.count(Prestamo.id).desc()).limit(5).all()
 
     return jsonify([{'titulo': r.titulo, 'total': r.total} for r in resultados])
+
+@main.route('/ajax/buscar_usuario_por_llave')
+@login_required
+def ajax_buscar_usuario_por_llave():
+    llave_prestamo = request.args.get('llave_prestamo')
+    usuario = Usuario.query.filter_by(llave_prestamo=llave_prestamo).first()
+    if usuario:
+        return jsonify(success=True, correo=usuario.correo, usuario_id=usuario.id)
+    else:
+        return jsonify(success=False)
+
+
+
+
+
 
